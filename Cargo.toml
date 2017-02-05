@@ -1,7 +1,7 @@
 [package]
 name = "neurons"
 version = "0.1.0"
-authors = ["mnye"]
+authors = ["Michael Nye <thenyeguy@gmail.com>"]
 
 [dependencies]
 rblas = "0.0.13"
