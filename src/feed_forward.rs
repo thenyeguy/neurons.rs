@@ -136,9 +136,13 @@ impl Layer {
 
     /// Feeds the provided `costs` backwards through the layer.
     fn backward(&self,
+                learning_rate: f64,
+                inputs: &[f64],
                 outputs: &[f64],
+                input_errors: &mut [f64],
                 output_errors: &mut [f64],
-                input_errors: &mut [f64]) {
+                weight_updates: &mut Mat) {
+        assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         assert_eq!(output_errors.len(), self.output_len());
         assert_eq!(input_errors.len(), self.input_len());
@@ -151,13 +155,16 @@ impl Layer {
                   output_errors,
                   &1.0,
                   input_errors);
+        f64::ger(&learning_rate, output_errors, inputs, weight_updates);
     }
 
-    /// Updates the weights of this layer.
-    fn update(&mut self, rate: f64, inputs: &[f64], output_errors: &[f64]) {
-        assert_eq!(inputs.len(), self.input_len());
-        assert_eq!(output_errors.len(), self.output_len());
-        f64::ger(&rate, output_errors, inputs, &mut self.weights);
+    fn apply_update(&mut self, update: &Mat) {
+        self.weights += update;
+    }
+
+    /// Returns an empty weight update matrix.
+    fn empty_weight_update(&self) -> Mat {
+        Mat::zeros(self.output_len(), self.input_len())
     }
 }
 
@@ -207,7 +214,7 @@ impl Network {
     fn feed_forward(&self, input: &[f64], network: &mut [Vec<f64>]) {
         network[0].copy_from_slice(input);
         for (i, layer) in self.layers.iter().enumerate() {
-            let (input, output) = io_layers(network, i);
+            let (input, output) = mut_layers(network, i);
             layer.forward(input, output);
         }
     }
@@ -215,35 +222,51 @@ impl Network {
     /// Feeds the provided `expected` value back through the network, returning
     /// the computed cost deltas.
     fn feed_backwards(&self,
+                      learning_rate: f64,
                       network: &[Vec<f64>],
                       expected: &[f64],
-                      errors: &mut [Vec<f64>]) {
+                      errors: &mut [Vec<f64>],
+                      weight_updates: &mut [Mat]) {
         for i in 0..expected.len() {
             errors.mut_back()[i] = expected[i] - network.back()[i];
         }
         for (i, layer) in (self.layers.iter().enumerate()).rev() {
-            let (in_error, out_error) = io_layers(errors, i);
-            layer.backward(&network[i + 1], out_error, in_error);
+            let (inputs, outputs) = io_layers(network, i);
+            let (in_error, out_error) = mut_layers(errors, i);
+            layer.backward(learning_rate,
+                           inputs,
+                           outputs,
+                           in_error,
+                           out_error,
+                           &mut weight_updates[i]);
         }
     }
 
-    /// Updates the network weights.
-    fn update(&mut self,
-              rate: f64,
-              network: &[Vec<f64>],
-              errors: &[Vec<f64>]) {
-        for (i, layer) in self.layers.iter_mut().enumerate() {
-            layer.update(rate, &network[i], &errors[i + 1]);
+    /// Applies weight updates to the network.
+    fn update(&mut self, weight_updates: &[Mat]) {
+        for (layer, weight_update) in
+            self.layers.iter_mut().zip(weight_updates.iter()) {
+            layer.apply_update(weight_update);
         }
     }
 
+    /// Returns an activation network full of zeros.
     fn empty_network(&self) -> Vec<Vec<f64>> {
-        let mut network = Vec::new();
+        let mut network = Vec::with_capacity(self.layers.len() + 1);
         network.push(vec![0.0; self.layers.front().input_len()]);
         for layer in &self.layers {
             network.push(vec![0.0; layer.output_len()]);
         }
         network
+    }
+
+    /// Returns a zeroed vector of weights updates for each layer.
+    fn empty_weight_updates(&self) -> Vec<Mat> {
+        let mut updates = Vec::with_capacity(self.layers.len());
+        for layer in &self.layers {
+            updates.push(layer.empty_weight_update());
+        }
+        updates
     }
 }
 
@@ -252,6 +275,10 @@ impl Network {
 pub enum LearningMode {
     /// Apply weight updates after every training example
     Stochastic,
+    /// Apply weights updates in batches of the provided size
+    ///
+    /// Must be less than the total number of training instances.
+    Batch(usize),
 }
 
 /// Logging frequency to use during training
@@ -390,23 +417,35 @@ impl Trainer {
         let mut network = Network::new(self.activator, &self.layer_sizes);
         let mut activations = network.empty_network();
         let mut errors = network.empty_network();
+        let mut updates = network.empty_weight_updates();
+
+        let batch_size = match self.learning_mode {
+            LearningMode::Stochastic => 1,
+            LearningMode::Batch(size) => size,
+        };
         let mut iteration = 0;
         let mut training_error;
         loop {
             training_error = 0.0;
-            for &(ref input, ref expected) in examples {
+            for (i, &(ref input, ref expected)) in examples.iter().enumerate() {
                 activations.zero_out();
                 errors.zero_out();
                 network.feed_forward(input.as_ref(), &mut activations);
-                network.feed_backwards(&activations,
+                network.feed_backwards(self.learning_rate,
+                                       &activations,
                                        expected.as_ref(),
-                                       &mut errors);
-                network.update(self.learning_rate, &activations, &errors);
+                                       &mut errors,
+                                       &mut updates);
+                if i % batch_size == 0 || i == examples.len() {
+                    network.update(&updates);
+                    updates.zero_out();
+                }
                 training_error += mean_square_error(activations.back(),
                                                     expected.as_ref());
             }
             training_error /= 2.0 * examples.len() as f64;
             iteration += 1;
+
             self.logging.iteration(iteration, training_error);
             if self.stop_condition
                 .should_stop(iteration, training_error) {
@@ -431,6 +470,11 @@ impl Trainer {
                 return Err(());
             }
         }
+        if let LearningMode::Batch(batch_size) = self.learning_mode {
+            if batch_size > examples.len() {
+                return Err(());
+            }
+        }
         for &(ref input, ref output) in examples {
             if input.as_ref().len() != *self.layer_sizes.front() {
                 return Err(());
@@ -444,9 +488,14 @@ impl Trainer {
 }
 
 /// Gets input and output slices for a layer.
-fn io_layers(layers: &mut [Vec<f64>],
-             layer: usize)
-             -> (&mut [f64], &mut [f64]) {
+fn io_layers(layers: &[Vec<f64>], layer: usize) -> (&[f64], &[f64]) {
+    let (before, after) = layers[layer..].split_at(1);
+    (&before[0], &after[0])
+}
+
+fn mut_layers(layers: &mut [Vec<f64>],
+              layer: usize)
+              -> (&mut [f64], &mut [f64]) {
     let (before, after) = layers[layer..].split_at_mut(1);
     (&mut before[0], &mut after[0])
 }
@@ -487,5 +536,14 @@ mod tests {
     fn wrong_output_size() {
         let examples = [([0.0], [0.0, 0.0])];
         assert!(Trainer::new(&[1, 1]).train(&examples[..]).is_err());
+    }
+
+    #[test]
+    fn too_large_batch_size() {
+        let examples = [([0.0], [0.0])];
+        assert!(Trainer::new(&[1])
+            .learning_mode(LearningMode::Batch(2))
+            .train(&examples[..])
+            .is_err());
     }
 }
