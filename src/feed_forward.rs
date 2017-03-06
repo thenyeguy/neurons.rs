@@ -32,6 +32,10 @@
 //! assert_eq!(classify(network.run(&[1.0, 1.0])), false);
 //! ```
 
+use traits::{Front, Back, ZeroOut};
+
+use rand::distributions::Normal;
+use rblas::Matrix;
 use rblas::attribute::Transpose;
 use rblas::math::mat::Mat;
 use rblas::matrix_vector::ops::{Gemv, Ger};
@@ -473,58 +477,6 @@ fn mean_square_error(actual: &[f64], expected: &[f64]) -> f64 {
         error += (a - e) * (a - e);
     }
     error / (actual.len() as f64)
-}
-
-/// A trait that provides easy access to slice elements.
-trait Items<T> {
-    #[inline(always)]
-    fn front(&self) -> &T;
-    #[inline(always)]
-    fn mut_front(&mut self) -> &mut T;
-    #[inline(always)]
-    fn back(&self) -> &T;
-    #[inline(always)]
-    fn mut_back(&mut self) -> &mut T;
-}
-
-impl<T> Items<T> for [T] {
-    #[inline(always)]
-    fn front(&self) -> &T {
-        &self[0]
-    }
-    #[inline(always)]
-    fn mut_front(&mut self) -> &mut T {
-        &mut self[0]
-    }
-    #[inline(always)]
-    fn back(&self) -> &T {
-        &self[self.len() - 1]
-    }
-    #[inline(always)]
-    fn mut_back(&mut self) -> &mut T {
-        let i = self.len() - 1;
-        &mut self[i]
-    }
-}
-
-trait ZeroOut {
-    fn zero_out(&mut self);
-}
-
-impl ZeroOut for Vec<f64> {
-    fn zero_out(&mut self) {
-        for elem in self {
-            *elem = 0.0;
-        }
-    }
-}
-
-impl ZeroOut for Vec<Vec<f64>> {
-    fn zero_out(&mut self) {
-        for buffer in self {
-            buffer.zero_out()
-        }
-    }
 }
 
 #[cfg(test)]
