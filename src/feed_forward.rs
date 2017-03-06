@@ -32,12 +32,12 @@
 //! assert_eq!(classify(network.run(&[1.0, 1.0])), false);
 //! ```
 
+use matrix::Mat;
 use traits::{Front, Back, ZeroOut};
 
 use rand::distributions::Normal;
 use rblas::Matrix;
 use rblas::attribute::Transpose;
-use rblas::math::mat::Mat;
 use rblas::matrix_vector::ops::{Gemv, Ger};
 
 /// [Activation function](https://en.wikipedia.org/wiki/Activation_function) types
@@ -90,7 +90,7 @@ struct Layer {
     /// The activation function to be used for every neuron in the layer.
     activator: Activator,
     /// The network weights, with each neuron's weights stored as a column.
-    weights: Mat<f64>,
+    weights: Mat,
 }
 
 impl Layer {
@@ -105,18 +105,18 @@ impl Layer {
     fn new(activator: Activator, inputs: usize, outputs: usize) -> Self {
         Layer {
             activator: activator,
-            weights: rand_mat(outputs, inputs),
+            weights: Mat::random(Normal::new(0.0, 1.0), outputs, inputs),
         }
     }
 
     /// Returns the number of inputs to this layer.
     fn input_len(&self) -> usize {
-        self.weights.cols()
+        self.weights.cols() as usize
     }
 
     /// Returns the number of inputs from this layer.
     fn output_len(&self) -> usize {
-        self.weights.rows()
+        self.weights.rows() as usize
     }
 
     /// Feeds the provided `inputs` forward through the layer.
@@ -449,24 +449,6 @@ fn io_layers(layers: &mut [Vec<f64>],
              -> (&mut [f64], &mut [f64]) {
     let (before, after) = layers[layer..].split_at_mut(1);
     (&mut before[0], &mut after[0])
-}
-
-/// Generates a randomly-initialized matrix.
-fn rand_mat(rows: usize, cols: usize) -> Mat<f64> {
-    use rand;
-    use rand::distributions::IndependentSample;
-    let mut rng = rand::thread_rng();
-    let range = rand::distributions::Normal::new(0.0, 1.0);
-
-    let mut mat = Mat::new(0, 0);
-    unsafe {
-        for _ in 0..(rows*cols) {
-            mat.push(range.ind_sample(&mut rng));
-        }
-        mat.set_cols(cols);
-        mat.set_rows(rows);
-    }
-    mat
 }
 
 /// Computes the mean squared error between `actual` and `expected`.
