@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Michael Nye <thenyeguy@gmail.com>"]
 
 [dependencies]
+rand = "0.3"
 rblas = "0.0.13"

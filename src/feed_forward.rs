@@ -7,7 +7,6 @@
 //!
 //! ```
 //! # use neurons::feed_forward::*;
-//!
 //! // Create examples of the XOR function
 //! let examples = [([0.0, 0.0], [0.0]),
 //!                 ([0.0, 1.0], [1.0]),
@@ -16,9 +15,10 @@
 //!
 //! // Train a network using those examples
 //! let network = Trainer::new(&[2, 3, 1])
-//!     .activator(Activator::ReLU)
-//!     .logging(Logging::Iterations(100))
-//!     .stop_condition(StopCondition::Iterations(1000))
+//!     .activator(Activator::Sigmoid)
+//!     .learning_rate(0.3)
+//!     .logging(Logging::Iterations(1000))
+//!     .stop_condition(StopCondition::Iterations(20000))
 //!     .train(&examples[..])
 //!     .unwrap();
 //!
@@ -101,7 +101,7 @@ impl Layer {
     fn new(activator: Activator, inputs: usize, outputs: usize) -> Self {
         Layer {
             activator: activator,
-            weights: Mat::fill(1.0, outputs, inputs),
+            weights: rand_mat(outputs, inputs),
         }
     }
 
@@ -153,7 +153,7 @@ impl Layer {
     fn update(&mut self, rate: f64, inputs: &[f64], output_errors: &[f64]) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(output_errors.len(), self.output_len());
-        f64::ger(&(-rate), inputs, output_errors, &mut self.weights);
+        f64::ger(&rate, output_errors, inputs, &mut self.weights);
     }
 }
 
@@ -215,11 +215,11 @@ impl Network {
                       expected: &[f64],
                       errors: &mut [Vec<f64>]) {
         for i in 0..expected.len() {
-            errors.mut_back()[i] = network.back()[i] - expected[i];
+            errors.mut_back()[i] = expected[i] - network.back()[i];
         }
         for (i, layer) in (self.layers.iter().enumerate()).rev() {
-            let (input, output) = io_layers(errors, i);
-            layer.backward(&network[i + 1], output, input);
+            let (in_error, out_error) = io_layers(errors, i);
+            layer.backward(&network[i + 1], out_error, in_error);
         }
     }
 
@@ -445,6 +445,24 @@ fn io_layers(layers: &mut [Vec<f64>],
              -> (&mut [f64], &mut [f64]) {
     let (before, after) = layers[layer..].split_at_mut(1);
     (&mut before[0], &mut after[0])
+}
+
+/// Generates a randomly-initialized matrix.
+fn rand_mat(rows: usize, cols: usize) -> Mat<f64> {
+    use rand;
+    use rand::distributions::IndependentSample;
+    let mut rng = rand::thread_rng();
+    let range = rand::distributions::Normal::new(0.0, 1.0);
+
+    let mut mat = Mat::new(0, 0);
+    unsafe {
+        for _ in 0..(rows*cols) {
+            mat.push(range.ind_sample(&mut rng));
+        }
+        mat.set_cols(cols);
+        mat.set_rows(rows);
+    }
+    mat
 }
 
 /// Computes the mean squared error between `actual` and `expected`.
