@@ -61,12 +61,11 @@ impl Layer {
 
     /// Feeds the provided `costs` backwards through the layer.
     pub fn backward(&self,
-                learning_rate: f64,
-                inputs: &[f64],
-                outputs: &[f64],
-                input_errors: &mut [f64],
-                output_errors: &mut [f64],
-                weight_updates: &mut Mat) {
+                    inputs: &[f64],
+                    outputs: &[f64],
+                    input_errors: &mut [f64],
+                    output_errors: &mut [f64],
+                    weight_updates: &mut Mat) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         assert_eq!(output_errors.len(), self.output_len());
@@ -80,11 +79,11 @@ impl Layer {
                   output_errors,
                   &1.0,
                   input_errors);
-        f64::ger(&learning_rate, output_errors, inputs, weight_updates);
+        f64::ger(&1.0, output_errors, inputs, weight_updates);
     }
 
-    pub fn apply_update(&mut self, update: &Mat) {
-        self.weights += update;
+    pub fn apply_update(&mut self, rate: f64, update: &Mat) {
+        self.weights.apply_delta(rate, update);
     }
 
     /// Returns an empty weight update matrix.
@@ -92,4 +91,3 @@ impl Layer {
         Mat::zeros(self.output_len(), self.input_len())
     }
 }
-

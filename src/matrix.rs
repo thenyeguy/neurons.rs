@@ -4,7 +4,6 @@ use rand;
 use rand::distributions::IndependentSample;
 use rblas::attribute::Order;
 use rblas::Matrix;
-use std::ops::AddAssign;
 use std::os::raw::c_int;
 
 #[derive(Clone, Debug)]
@@ -37,12 +36,10 @@ impl Mat {
             data: data,
         }
     }
-}
 
-impl<'a> AddAssign<&'a Mat> for Mat {
-    fn add_assign(&mut self, other: &Mat) {
+    pub fn apply_delta(&mut self, multiplier: f64, other: &Mat) {
         for (l, r) in self.data.iter_mut().zip(other.data.iter()) {
-            *l += *r;
+            *l += multiplier * *r;
         }
     }
 }

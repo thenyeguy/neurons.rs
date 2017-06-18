@@ -1,31 +1,44 @@
-pub trait ModelUpdate {
-    fn new() -> Self;
-    fn reset(&mut self);
+//! Utilities for training neural networks.
+
+/// Makes a model trainable using gradient desecent.
+pub trait Trainable {
+    /// Input data format.
+    type Input;
+
+    /// Output data format.
+    type Output;
+
+    /// A container for training updates.
+    type Update;
+
+    /// Returns a new, empty model update.
+    fn new_update(&self) -> Self::Update;
+
+    /// Using the provided training example, accumulate model updates into
+    /// `update`. Returns the mean square error for the example prediction.
+    fn compute_update(&self,
+                      example: &Self::Input,
+                      expected: &Self::Output,
+                      update: &mut Self::Update)
+                      -> f64;
+
+    /// Applies and resets the provided `update`, scaling by the gradient
+    /// desecent `rate`.
+    fn apply_update(&mut self, rate: f64, update: &mut Self::Update);
 }
 
-pub trait Model {
-    type Update: ModelUpdate;
 
-    fn compute_update<I, O>(&self,
-                            example: &(I, O),
-                            update: &mut Self::Update)
-                            -> f64;
-
-    fn apply_update(&mut self, update: &Self::Update);
-}
-
-
-/// Trains a new `Model` object.
+/// A builder for training new models.
 #[derive(Debug)]
-pub struct Trainer<M: Model> {
-    model: M,
+pub struct Trainer<T: Trainable> {
+    model: T,
     learning_mode: LearningMode,
     learning_rate: f64,
     logging: Logging,
     stop_condition: StopCondition,
 }
 
-impl<M: Model> Trainer<M> {
+impl<T: Trainable> Trainer<T> {
     /// Creates a new Trainer instance.
     ///
     /// The trainer is initialized with some default values. These defaults are:
@@ -34,7 +47,7 @@ impl<M: Model> Trainer<M> {
     /// * A learning rate of 0.1.
     /// * Stops after 1000 training iterations.
     /// * Logs on training completion.
-    pub fn new(model: M) -> Self {
+    pub fn new(model: T) -> Self {
         Trainer {
             model: model,
             learning_mode: LearningMode::Stochastic,
@@ -76,8 +89,8 @@ impl<M: Model> Trainer<M> {
     /// Returns:
     ///   A fully trained neural network, or an error if invalid training
     ///   parameters were provided.
-    pub fn train<I, O>(mut self, examples: &[(I, O)]) -> M {
-        let mut updates = M::Update::new();
+    pub fn train(mut self, examples: &[(T::Input, T::Output)]) -> T {
+        let mut updates = self.model.new_update();
 
         let batch_size = match self.learning_mode {
             LearningMode::Stochastic => 1,
@@ -87,12 +100,12 @@ impl<M: Model> Trainer<M> {
         let mut training_error;
         loop {
             training_error = 0.0;
-            for (i, ref example) in examples.iter().enumerate() {
+            for (i, &(ref example, ref expected)) in
+                examples.iter().enumerate() {
                 training_error += self.model
-                    .compute_update(example, &mut updates);
+                    .compute_update(example, expected, &mut updates);
                 if i % batch_size == 0 || i == examples.len() {
-                    self.model.apply_update(&updates);
-                    updates.reset();
+                    self.model.apply_update(self.learning_rate, &mut updates);
                 }
             }
             training_error /= 2.0 * examples.len() as f64;
