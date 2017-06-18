@@ -45,7 +45,9 @@ fn score(set_name: &str,
 }
 
 fn main() {
+    use neurons::activator::Activator;
     use neurons::feed_forward::*;
+
     let training_data = generate_data(10_000);
     let network = Trainer::new(&[2, 5, 5, 2])
         .activator(Activator::Sigmoid)
