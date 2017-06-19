@@ -7,4 +7,4 @@ pub mod trainer;
 
 mod layer;
 mod matrix;
-mod traits;
+mod utils;

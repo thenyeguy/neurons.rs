@@ -34,7 +34,7 @@
 use layer::Layer;
 use matrix::Mat;
 use trainer::Trainable;
-use traits::{Front, Back, ZeroOut};
+use utils::{Front, Back, ZeroOut};
 
 pub use activator::Activator;
 

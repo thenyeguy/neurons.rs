@@ -1,4 +1,4 @@
-use traits::ZeroOut;
+use utils::ZeroOut;
 
 use rand;
 use rand::distributions::IndependentSample;

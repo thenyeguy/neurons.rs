@@ -42,10 +42,18 @@ pub trait ZeroOut {
     fn zero_out(&mut self);
 }
 
-impl ZeroOut for Vec<f64> {
+impl ZeroOut for f64 {
+    fn zero_out(&mut self) {
+        *self = 0.0;
+    }
+}
+
+impl<T> ZeroOut for [T]
+    where T: ZeroOut
+{
     fn zero_out(&mut self) {
         for elem in self {
-            *elem = 0.0;
+            elem.zero_out();
         }
     }
 }
@@ -54,8 +62,8 @@ impl<T> ZeroOut for Vec<T>
     where T: ZeroOut
 {
     fn zero_out(&mut self) {
-        for buffer in self {
-            buffer.zero_out()
+        for elem in self {
+            elem.zero_out();
         }
     }
 }
