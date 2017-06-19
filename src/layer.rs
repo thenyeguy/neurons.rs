@@ -1,6 +1,7 @@
 use activator::Activator;
 use matrix::Mat;
 
+use itertools::zip;
 use rand::distributions::Normal;
 use rblas::Matrix;
 use rblas::attribute::Transpose;
@@ -70,7 +71,7 @@ impl Layer {
         assert_eq!(outputs.len(), self.output_len());
         assert_eq!(output_errors.len(), self.output_len());
         assert_eq!(input_errors.len(), self.input_len());
-        for (y, e) in outputs.iter().zip(output_errors.iter_mut()) {
+        for (y, e) in zip(outputs.iter(), output_errors.iter_mut()) {
             *e *= self.activator.fprime(*y);
         }
         f64::gemv(Transpose::Trans,

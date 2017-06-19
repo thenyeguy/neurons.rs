@@ -36,6 +36,8 @@ use matrix::Mat;
 use trainer::Trainable;
 use utils::{Front, Back, ZeroOut};
 
+use itertools::zip;
+
 pub use activator::Activator;
 
 /// A feed-forward neural network model.
@@ -161,8 +163,7 @@ impl Trainable for Model {
     }
 
     fn apply_update(&mut self, rate: f64, update: &mut Self::Update) {
-        for (layer, weight_update) in
-            self.layers.iter_mut().zip(update.updates.iter()) {
+        for (layer, weight_update) in zip(&mut self.layers, &update.updates) {
             layer.apply_update(rate, weight_update);
         }
         update.updates.zero_out();
@@ -211,7 +212,7 @@ fn mut_layers(layers: &mut [Vec<f64>],
 fn mean_square_error(actual: &[f64], expected: &[f64]) -> f64 {
     assert_eq!(actual.len(), expected.len());
     let mut error = 0.0;
-    for (&a, e) in actual.iter().zip(expected) {
+    for (&a, &e) in zip(actual, expected) {
         error += (a - e) * (a - e);
     }
     error / (actual.len() as f64)

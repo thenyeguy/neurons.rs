@@ -1,3 +1,4 @@
+extern crate itertools;
 extern crate rand;
 extern crate rblas;
 

@@ -1,5 +1,6 @@
 use utils::ZeroOut;
 
+use itertools::zip;
 use rand;
 use rand::distributions::IndependentSample;
 use rblas::attribute::Order;
@@ -38,7 +39,7 @@ impl Mat {
     }
 
     pub fn apply_delta(&mut self, multiplier: f64, other: &Mat) {
-        for (l, r) in self.data.iter_mut().zip(other.data.iter()) {
+        for (l, r) in zip(&mut self.data, &other.data) {
             *l += multiplier * *r;
         }
     }
