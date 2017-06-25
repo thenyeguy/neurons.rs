@@ -31,8 +31,7 @@
 //! assert_eq!(classify(runner.run(&[1.0, 1.0])), false);
 //! ```
 
-use layer::Layer;
-use matrix::Mat;
+use layers::{dense, Layer};
 use trainer::Trainable;
 use utils::{Front, Back, ZeroOut};
 
@@ -43,7 +42,7 @@ pub use activator::Activator;
 /// A feed-forward neural network model.
 #[derive(Debug)]
 pub struct Model {
-    layers: Vec<Layer>,
+    layers: Vec<dense::Layer>,
 }
 
 impl Model {
@@ -56,9 +55,9 @@ impl Model {
     pub fn new(activator: Activator, layer_sizes: &[usize]) -> Self {
         let mut layers = Vec::new();
         for i in 0..(layer_sizes.len() - 1) {
-            layers.push(Layer::new(activator,
-                                   layer_sizes[i],
-                                   layer_sizes[i + 1]));
+            layers.push(dense::Layer::new(activator,
+                                          layer_sizes[i],
+                                          layer_sizes[i + 1]));
         }
         Model { layers: layers }
     }
@@ -89,7 +88,7 @@ impl Model {
                       network: &[Vec<f64>],
                       expected: &[f64],
                       errors: &mut [Vec<f64>],
-                      weight_updates: &mut [Mat]) {
+                      updates: &mut [dense::Update]) {
         for i in 0..expected.len() {
             errors.mut_back()[i] = expected[i] - network.back()[i];
         }
@@ -98,9 +97,9 @@ impl Model {
             let (in_error, out_error) = mut_layers(errors, i);
             layer.backward(inputs,
                            outputs,
-                           in_error,
                            out_error,
-                           &mut weight_updates[i]);
+                           in_error,
+                           &mut updates[i]);
         }
     }
 
@@ -113,15 +112,6 @@ impl Model {
         }
         activations
     }
-
-    /// Returns a zeroed vector of weights updates for each layer.
-    fn empty_weight_updates(&self) -> Vec<Mat> {
-        let mut updates = Vec::with_capacity(self.layers.len());
-        for layer in &self.layers {
-            updates.push(layer.empty_weight_update());
-        }
-        updates
-    }
 }
 
 /// A container for training updates.
@@ -130,8 +120,8 @@ pub struct ModelUpdate {
     activations: Vec<Vec<f64>>,
     errors: Vec<Vec<f64>>,
 
-    // This field holds the actual weight updates.
-    updates: Vec<Mat>,
+    // This field holds the actual layer updates.
+    updates: Vec<dense::Update>,
 }
 
 impl Trainable for Model {
@@ -140,10 +130,15 @@ impl Trainable for Model {
     type Update = ModelUpdate;
 
     fn new_update(&self) -> Self::Update {
+        let mut layer_updates = Vec::with_capacity(self.layers.len());
+        for layer in &self.layers {
+            layer_updates.push(layer.new_update());
+        }
+
         ModelUpdate {
             activations: self.empty_activation_network(),
             errors: self.empty_activation_network(),
-            updates: self.empty_weight_updates(),
+            updates: layer_updates,
         }
     }
 
@@ -163,10 +158,10 @@ impl Trainable for Model {
     }
 
     fn apply_update(&mut self, rate: f64, update: &mut Self::Update) {
-        for (layer, weight_update) in zip(&mut self.layers, &update.updates) {
+        for (layer, weight_update) in
+            zip(&mut self.layers, &mut update.updates) {
             layer.apply_update(rate, weight_update);
         }
-        update.updates.zero_out();
     }
 }
 

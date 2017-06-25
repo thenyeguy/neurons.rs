@@ -1,13 +1,15 @@
 use activator::Activator;
+use layers;
 use matrix::Mat;
+use utils::ZeroOut;
 
-use itertools::zip;
+use itertools::multizip;
 use rand::distributions::Normal;
 use rblas::Matrix;
 use rblas::attribute::Transpose;
 use rblas::matrix_vector::ops::{Gemv, Ger};
 
-/// A wrapper for a single layer of the neural network
+/// A wrapper for a fully connected layer of a neural network
 ///
 /// This performs efficient network updates by storing the weights for every
 /// neuron as a single Matrix.
@@ -34,19 +36,33 @@ impl Layer {
             weights: Mat::random(Normal::new(0.0, 1.0), outputs, inputs),
         }
     }
+}
 
-    /// Returns the number of inputs to this layer.
-    pub fn input_len(&self) -> usize {
+#[derive(Debug)]
+pub struct Update {
+    weight_delta: Mat,
+    derivative: Vec<f64>,
+}
+
+impl layers::Layer for Layer {
+    type Update = Update;
+
+    fn input_len(&self) -> usize {
         self.weights.cols() as usize
     }
 
-    /// Returns the number of inputs from this layer.
-    pub fn output_len(&self) -> usize {
+    fn output_len(&self) -> usize {
         self.weights.rows() as usize
     }
 
-    /// Feeds the provided `inputs` forward through the layer.
-    pub fn forward(&self, inputs: &[f64], outputs: &mut [f64]) {
+    fn new_update(&self) -> Self::Update {
+        Update {
+            weight_delta: Mat::zeros(self.output_len(), self.input_len()),
+            derivative: vec![0.0; self.output_len()],
+        }
+    }
+
+    fn forward(&self, inputs: &[f64], outputs: &mut [f64]) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         f64::gemv(Transpose::NoTrans,
@@ -61,34 +77,32 @@ impl Layer {
     }
 
     /// Feeds the provided `costs` backwards through the layer.
-    pub fn backward(&self,
-                    inputs: &[f64],
-                    outputs: &[f64],
-                    input_errors: &mut [f64],
-                    output_errors: &mut [f64],
-                    weight_updates: &mut Mat) {
+    fn backward(&self,
+                inputs: &[f64],
+                outputs: &[f64],
+                output_errors: &[f64],
+                input_errors: &mut [f64],
+                update: &mut Self::Update) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         assert_eq!(output_errors.len(), self.output_len());
         assert_eq!(input_errors.len(), self.input_len());
-        for (y, e) in zip(outputs.iter(), output_errors.iter_mut()) {
-            *e *= self.activator.fprime(*y);
+        for (y, e, d) in multizip((outputs.iter(),
+                                   output_errors.iter(),
+                                   update.derivative.iter_mut())) {
+            *d = e * self.activator.fprime(*y);
         }
         f64::gemv(Transpose::Trans,
                   &1.0,
                   &self.weights,
-                  output_errors,
+                  &update.derivative,
                   &1.0,
                   input_errors);
-        f64::ger(&1.0, output_errors, inputs, weight_updates);
+        f64::ger(&1.0, &update.derivative, inputs, &mut update.weight_delta);
     }
 
-    pub fn apply_update(&mut self, rate: f64, update: &Mat) {
-        self.weights.apply_delta(rate, update);
-    }
-
-    /// Returns an empty weight update matrix.
-    pub fn empty_weight_update(&self) -> Mat {
-        Mat::zeros(self.output_len(), self.input_len())
+    fn apply_update(&mut self, rate: f64, update: &mut Self::Update) {
+        self.weights.apply_delta(rate, &update.weight_delta);
+        update.weight_delta.zero_out();
     }
 }

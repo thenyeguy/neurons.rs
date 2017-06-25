@@ -1,11 +1,22 @@
-trait Layer {
+pub mod dense;
+
+pub trait Layer {
     type Update;
+
+    /// The size of inputs to this layer.
+    fn input_len(&self) -> usize;
+
+    /// The size of outputs from this layer.
+    fn output_len(&self) -> usize;
 
     /// Returns a new, empty model update.
     fn new_update(&self) -> Self::Update;
 
+    /// Feeds the provided inputs forward through the layer.
     fn forward(&self, inputs: &[f64], outputs: &mut [f64]);
 
+    /// Backpropogates errors back through the layer, and accumulates layer
+    /// updates into `update`.
     fn backward(&self,
                 inputs: &[f64],
                 outputs: &[f64],
