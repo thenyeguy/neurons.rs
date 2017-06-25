@@ -78,7 +78,7 @@ impl Model {
         network[0].copy_from_slice(input);
         for (i, layer) in self.layers.iter().enumerate() {
             let (input, output) = mut_layers(network, i);
-            layer.forward(input, output);
+            layer.forward(input, output, &mut ());
         }
     }
 
@@ -97,6 +97,7 @@ impl Model {
             let (in_error, out_error) = mut_layers(errors, i);
             layer.backward(inputs,
                            outputs,
+                           &(),
                            out_error,
                            in_error,
                            &mut updates[i]);

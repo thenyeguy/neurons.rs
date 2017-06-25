@@ -45,6 +45,7 @@ pub struct Update {
 }
 
 impl layers::Layer for Layer {
+    type State = ();
     type Update = Update;
 
     fn input_len(&self) -> usize {
@@ -55,6 +56,10 @@ impl layers::Layer for Layer {
         self.weights.rows() as usize
     }
 
+    fn new_state(&self) -> Self::State {
+        ()
+    }
+
     fn new_update(&self) -> Self::Update {
         Update {
             weight_delta: Mat::zeros(self.output_len(), self.input_len()),
@@ -62,7 +67,10 @@ impl layers::Layer for Layer {
         }
     }
 
-    fn forward(&self, inputs: &[f64], outputs: &mut [f64]) {
+    fn forward(&self,
+               inputs: &[f64],
+               outputs: &mut [f64],
+               _: &mut Self::State) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         f64::gemv(Transpose::NoTrans,
@@ -80,6 +88,7 @@ impl layers::Layer for Layer {
     fn backward(&self,
                 inputs: &[f64],
                 outputs: &[f64],
+                _: &Self::State,
                 output_errors: &[f64],
                 input_errors: &mut [f64],
                 update: &mut Self::Update) {
