@@ -2,7 +2,7 @@
 
 /// [Activation function](https://en.wikipedia.org/wiki/Activation_function)
 /// types.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Activator {
     /// Rectified Linear Unit
     ReLU,

@@ -40,7 +40,7 @@ use itertools::zip;
 pub use activator::Activator;
 
 /// A feed-forward neural network model.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Model {
     layers: Vec<dense::Layer>,
 }

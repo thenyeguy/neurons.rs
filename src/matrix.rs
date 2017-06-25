@@ -7,7 +7,7 @@ use rblas::attribute::Order;
 use rblas::Matrix;
 use std::os::raw::c_int;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Mat {
     rows: usize,
     cols: usize,

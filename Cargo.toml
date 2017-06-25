@@ -7,3 +7,5 @@ authors = ["Michael Nye <thenyeguy@gmail.com>"]
 itertools = "0.6"
 rand = "0.3"
 rblas = "0.0.13"
+serde = "1.0"
+serde_derive = "1.0"

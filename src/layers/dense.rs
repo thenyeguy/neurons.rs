@@ -13,7 +13,7 @@ use rblas::matrix_vector::ops::{Gemv, Ger};
 ///
 /// This performs efficient network updates by storing the weights for every
 /// neuron as a single Matrix.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Layer {
     /// The activation function to be used for every neuron in the layer.
     activator: Activator,
