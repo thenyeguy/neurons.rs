@@ -1,5 +1,7 @@
 //! Utilities for training neural networks.
 
+use std::time::{Duration, Instant};
+
 /// Makes a model trainable using gradient desecent.
 pub trait Trainable {
     /// Input data format.
@@ -76,8 +78,10 @@ impl<T: Trainable> Trainer<T> {
     }
 
     /// Sets the condition to finish training.
-    pub fn stop_condition(mut self, condition: StopCondition) -> Self {
-        self.stop_condition = condition;
+    pub fn stop_condition<C>(mut self, condition: C) -> Self
+        where C: Into<StopCondition>
+    {
+        self.stop_condition = condition.into();
         self
     }
 
@@ -92,6 +96,7 @@ impl<T: Trainable> Trainer<T> {
     pub fn train(mut self, examples: &[(T::Input, T::Output)]) -> T {
         let mut updates = self.model.new_update();
 
+        let start_time = Instant::now();
         let batch_size = match self.learning_mode {
             LearningMode::Stochastic => 1,
             LearningMode::Batch(size) => size,
@@ -113,11 +118,11 @@ impl<T: Trainable> Trainer<T> {
 
             self.logging.iteration(iteration, training_error);
             if self.stop_condition
-                .should_stop(iteration, training_error) {
+                .should_stop(iteration, training_error, start_time) {
                 break;
             }
         }
-        self.logging.completion(iteration, training_error);
+        self.logging.completion(iteration, training_error, start_time);
         self.model
     }
 }
@@ -156,11 +161,16 @@ impl Logging {
     }
 
     /// Performs logging at the end of training.
-    fn completion(&self, iterations: usize, training_error: f64) {
+    fn completion(&self,
+                  iterations: usize,
+                  training_error: f64,
+                  start_time: Instant) {
         if let &Logging::Silent = self {
             return;
         }
-        println!("Training completed after {} iterations.", iterations);
+        println!("Ran {} iterations in {} seconds.",
+                 iterations,
+                 start_time.elapsed().as_secs());
         println!("Final MSE: {}", training_error);
     }
 }
@@ -172,15 +182,28 @@ pub enum StopCondition {
     Iterations(usize),
     /// Stops when the training error drops below the provided threshold
     ErrorThreshold(f64),
+    /// Stops after the provided duration
+    Duration(Duration),
+}
+
+impl From<Duration> for StopCondition {
+    fn from(duration: Duration) -> StopCondition {
+        StopCondition::Duration(duration)
+    }
 }
 
 impl StopCondition {
     /// Returns true of training is complete.
-    fn should_stop(&self, iteration: usize, training_error: f64) -> bool {
+    fn should_stop(&self,
+                   iteration: usize,
+                   training_error: f64,
+                   start_time: Instant)
+                   -> bool {
         use self::StopCondition::*;
         match self {
             &Iterations(iterations) => iteration >= iterations,
             &ErrorThreshold(threshold) => training_error < threshold,
+            &Duration(duration) => start_time.elapsed() > duration,
         }
     }
 }

@@ -47,11 +47,12 @@ fn score(set_name: &str,
 fn main() {
     use neurons::feed_forward::{self, Activator};
     use neurons::trainer::*;
+    use std::time::Duration;
 
     let training_data = generate_data(10_000);
     let model = Trainer::new(feed_forward::Model::new(Activator::Sigmoid,
                                                       &[2, 5, 5, 2]))
-        .stop_condition(StopCondition::ErrorThreshold(0.001))
+        .stop_condition(Duration::from_secs(2))
         .logging(Logging::Iterations(50))
         .train(&training_data);
     let mut runner = feed_forward::Runner::new(&model);
