@@ -51,7 +51,7 @@ impl<T: Trainable> Trainer<T> {
     /// * Logs on training completion.
     pub fn new(model: T) -> Self {
         Trainer {
-            model: model,
+            model,
             learning_mode: LearningMode::Stochastic,
             learning_rate: 0.1,
             logging: Logging::Completion,
@@ -158,7 +158,7 @@ impl Logging {
     /// Performs logging at the current `iteration` of training.
     fn iteration(&self, iteration: usize, training_error: f64) {
         use self::Logging::*;
-        if let &Iterations(freq) = self {
+        if let Iterations(freq) = *self {
             if freq > 0 && iteration % freq == 0 {
                 println!("Iteration {}:\tMSE={}", iteration, training_error);
             }
@@ -172,7 +172,7 @@ impl Logging {
         training_error: f64,
         start_time: Instant,
     ) {
-        if let &Logging::Silent = self {
+        if let Logging::Silent = *self {
             return;
         }
         println!(
@@ -210,10 +210,10 @@ impl StopCondition {
         start_time: Instant,
     ) -> bool {
         use self::StopCondition::*;
-        match self {
-            &Iterations(iterations) => iteration >= iterations,
-            &ErrorThreshold(threshold) => training_error < threshold,
-            &Duration(duration) => start_time.elapsed() > duration,
+        match *self {
+            Iterations(iterations) => iteration >= iterations,
+            ErrorThreshold(threshold) => training_error < threshold,
+            Duration(duration) => start_time.elapsed() > duration,
         }
     }
 }

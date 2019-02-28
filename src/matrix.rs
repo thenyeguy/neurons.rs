@@ -17,8 +17,8 @@ pub struct Mat {
 impl Mat {
     pub fn zeros(rows: usize, cols: usize) -> Self {
         Mat {
-            rows: rows,
-            cols: cols,
+            rows,
+            cols,
             data: vec![0.0; rows * cols],
         }
     }
@@ -32,11 +32,7 @@ impl Mat {
         for _ in 0..(rows * cols) {
             data.push(distribution.ind_sample(&mut rng));
         }
-        Mat {
-            rows: rows,
-            cols: cols,
-            data: data,
-        }
+        Mat { rows, cols, data }
     }
 
     pub fn apply_delta(&mut self, multiplier: f64, other: &Mat) {

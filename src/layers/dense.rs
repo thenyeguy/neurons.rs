@@ -32,7 +32,7 @@ impl Layer {
     ///  * `outputs` - the number of outputs from this layer.
     pub fn new(activator: Activator, inputs: usize, outputs: usize) -> Self {
         Layer {
-            activator: activator,
+            activator,
             weights: Mat::random(Normal::new(0.0, 1.0), outputs, inputs),
         }
     }
@@ -56,9 +56,7 @@ impl layers::Layer for Layer {
         self.weights.rows() as usize
     }
 
-    fn new_state(&self) -> Self::State {
-        ()
-    }
+    fn new_state(&self) -> Self::State {}
 
     fn new_update(&self) -> Self::Update {
         Update {

@@ -61,7 +61,7 @@ impl Model {
                 layer_sizes[i + 1],
             ));
         }
-        Model { layers: layers }
+        Model { layers }
     }
 
     /// Returns the size of the input layer to the network.
@@ -186,7 +186,7 @@ impl<'a> Runner<'a> {
     /// Creates a new Runner using the provided model.
     pub fn new(model: &'a Model) -> Self {
         Runner {
-            model: model,
+            model,
             activations: model.empty_activation_network(),
         }
     }
