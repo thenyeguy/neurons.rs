@@ -1,13 +1,13 @@
-use activator::Activator;
-use layers;
-use matrix::Mat;
-use utils::ZeroOut;
+use crate::activator::Activator;
+use crate::layers;
+use crate::matrix::Mat;
+use crate::utils::ZeroOut;
 
 use itertools::multizip;
 use rand::distributions::Normal;
-use rblas::Matrix;
 use rblas::attribute::Transpose;
 use rblas::matrix_vector::ops::{Gemv, Ger};
+use rblas::Matrix;
 
 /// A wrapper for a fully connected layer of a neural network
 ///
@@ -67,46 +67,56 @@ impl layers::Layer for Layer {
         }
     }
 
-    fn forward(&self,
-               inputs: &[f64],
-               outputs: &mut [f64],
-               _: &mut Self::State) {
+    fn forward(
+        &self,
+        inputs: &[f64],
+        outputs: &mut [f64],
+        _: &mut Self::State,
+    ) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
-        f64::gemv(Transpose::NoTrans,
-                  &1.0,
-                  &self.weights,
-                  inputs,
-                  &1.0,
-                  outputs);
+        f64::gemv(
+            Transpose::NoTrans,
+            &1.0,
+            &self.weights,
+            inputs,
+            &1.0,
+            outputs,
+        );
         for y in outputs {
             *y = self.activator.f(*y);
         }
     }
 
     /// Feeds the provided `costs` backwards through the layer.
-    fn backward(&self,
-                inputs: &[f64],
-                outputs: &[f64],
-                _: &Self::State,
-                output_errors: &[f64],
-                input_errors: &mut [f64],
-                update: &mut Self::Update) {
+    fn backward(
+        &self,
+        inputs: &[f64],
+        outputs: &[f64],
+        _: &Self::State,
+        output_errors: &[f64],
+        input_errors: &mut [f64],
+        update: &mut Self::Update,
+    ) {
         assert_eq!(inputs.len(), self.input_len());
         assert_eq!(outputs.len(), self.output_len());
         assert_eq!(output_errors.len(), self.output_len());
         assert_eq!(input_errors.len(), self.input_len());
-        for (y, e, d) in multizip((outputs.iter(),
-                                   output_errors.iter(),
-                                   update.derivative.iter_mut())) {
+        for (y, e, d) in multizip((
+            outputs.iter(),
+            output_errors.iter(),
+            update.derivative.iter_mut(),
+        )) {
             *d = e * self.activator.fprime(*y);
         }
-        f64::gemv(Transpose::Trans,
-                  &1.0,
-                  &self.weights,
-                  &update.derivative,
-                  &1.0,
-                  input_errors);
+        f64::gemv(
+            Transpose::Trans,
+            &1.0,
+            &self.weights,
+            &update.derivative,
+            &1.0,
+            input_errors,
+        );
         f64::ger(&1.0, &update.derivative, inputs, &mut update.weight_delta);
     }
 

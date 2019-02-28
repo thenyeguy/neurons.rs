@@ -49,7 +49,8 @@ impl ZeroOut for f64 {
 }
 
 impl<T> ZeroOut for [T]
-    where T: ZeroOut
+where
+    T: ZeroOut,
 {
     fn zero_out(&mut self) {
         for elem in self {
@@ -59,7 +60,8 @@ impl<T> ZeroOut for [T]
 }
 
 impl<T> ZeroOut for Vec<T>
-    where T: ZeroOut
+where
+    T: ZeroOut,
 {
     fn zero_out(&mut self) {
         for elem in self {

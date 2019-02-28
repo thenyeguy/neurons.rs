@@ -18,17 +18,17 @@ pub trait Trainable {
 
     /// Using the provided training example, accumulate model updates into
     /// `update`. Returns the mean square error for the example prediction.
-    fn compute_update(&self,
-                      example: &Self::Input,
-                      expected: &Self::Output,
-                      update: &mut Self::Update)
-                      -> f64;
+    fn compute_update(
+        &self,
+        example: &Self::Input,
+        expected: &Self::Output,
+        update: &mut Self::Update,
+    ) -> f64;
 
     /// Applies and resets the provided `update`, scaling by the gradient
     /// desecent `rate`.
     fn apply_update(&mut self, rate: f64, update: &mut Self::Update);
 }
-
 
 /// A builder for training new models.
 #[derive(Debug)]
@@ -79,7 +79,8 @@ impl<T: Trainable> Trainer<T> {
 
     /// Sets the condition to finish training.
     pub fn stop_condition<C>(mut self, condition: C) -> Self
-        where C: Into<StopCondition>
+    where
+        C: Into<StopCondition>,
     {
         self.stop_condition = condition.into();
         self
@@ -105,10 +106,10 @@ impl<T: Trainable> Trainer<T> {
         let mut training_error;
         loop {
             training_error = 0.0;
-            for (i, &(ref example, ref expected)) in
-                examples.iter().enumerate() {
-                training_error += self.model
-                    .compute_update(example, expected, &mut updates);
+            for (i, &(ref example, ref expected)) in examples.iter().enumerate()
+            {
+                training_error +=
+                    self.model.compute_update(example, expected, &mut updates);
                 if i % batch_size == 0 || i == examples.len() {
                     self.model.apply_update(self.learning_rate, &mut updates);
                 }
@@ -117,12 +118,16 @@ impl<T: Trainable> Trainer<T> {
             iteration += 1;
 
             self.logging.iteration(iteration, training_error);
-            if self.stop_condition
-                .should_stop(iteration, training_error, start_time) {
+            if self.stop_condition.should_stop(
+                iteration,
+                training_error,
+                start_time,
+            ) {
                 break;
             }
         }
-        self.logging.completion(iteration, training_error, start_time);
+        self.logging
+            .completion(iteration, training_error, start_time);
         self.model
     }
 }
@@ -161,16 +166,20 @@ impl Logging {
     }
 
     /// Performs logging at the end of training.
-    fn completion(&self,
-                  iterations: usize,
-                  training_error: f64,
-                  start_time: Instant) {
+    fn completion(
+        &self,
+        iterations: usize,
+        training_error: f64,
+        start_time: Instant,
+    ) {
         if let &Logging::Silent = self {
             return;
         }
-        println!("Ran {} iterations in {} seconds.",
-                 iterations,
-                 start_time.elapsed().as_secs());
+        println!(
+            "Ran {} iterations in {} seconds.",
+            iterations,
+            start_time.elapsed().as_secs()
+        );
         println!("Final MSE: {}", training_error);
     }
 }
@@ -194,11 +203,12 @@ impl From<Duration> for StopCondition {
 
 impl StopCondition {
     /// Returns true of training is complete.
-    fn should_stop(&self,
-                   iteration: usize,
-                   training_error: f64,
-                   start_time: Instant)
-                   -> bool {
+    fn should_stop(
+        &self,
+        iteration: usize,
+        training_error: f64,
+        start_time: Instant,
+    ) -> bool {
         use self::StopCondition::*;
         match self {
             &Iterations(iterations) => iteration >= iterations,

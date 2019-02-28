@@ -17,17 +17,24 @@ pub trait Layer {
     fn new_update(&self) -> Self::Update;
 
     /// Feeds the provided inputs forward through the layer.
-    fn forward(&self, inputs: &[f64], outputs: &mut [f64], state: &mut Self::State);
+    fn forward(
+        &self,
+        inputs: &[f64],
+        outputs: &mut [f64],
+        state: &mut Self::State,
+    );
 
     /// Backpropogates errors back through the layer, and accumulates layer
     /// updates into `update`.
-    fn backward(&self,
-                inputs: &[f64],
-                outputs: &[f64],
-                state: &Self::State,
-                output_errors: &[f64],
-                input_errors: &mut [f64],
-                updates: &mut Self::Update);
+    fn backward(
+        &self,
+        inputs: &[f64],
+        outputs: &[f64],
+        state: &Self::State,
+        output_errors: &[f64],
+        input_errors: &mut [f64],
+        updates: &mut Self::Update,
+    );
 
     /// Applies and resets the provided `update`, scaling by the gradient
     /// desecent `rate`.

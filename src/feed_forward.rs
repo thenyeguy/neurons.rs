@@ -31,13 +31,13 @@
 //! assert_eq!(classify(runner.run(&[1.0, 1.0])), false);
 //! ```
 
-use layers::{dense, Layer};
-use trainer::Trainable;
-use utils::{Front, Back, ZeroOut};
+use crate::layers::{dense, Layer};
+use crate::trainer::Trainable;
+use crate::utils::{Back, Front, ZeroOut};
 
 use itertools::zip;
 
-pub use activator::Activator;
+pub use crate::activator::Activator;
 
 /// A feed-forward neural network model.
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,9 +55,11 @@ impl Model {
     pub fn new(activator: Activator, layer_sizes: &[usize]) -> Self {
         let mut layers = Vec::new();
         for i in 0..(layer_sizes.len() - 1) {
-            layers.push(dense::Layer::new(activator,
-                                          layer_sizes[i],
-                                          layer_sizes[i + 1]));
+            layers.push(dense::Layer::new(
+                activator,
+                layer_sizes[i],
+                layer_sizes[i + 1],
+            ));
         }
         Model { layers: layers }
     }
@@ -84,23 +86,27 @@ impl Model {
 
     /// Feeds the provided `expected` value back through the network, returning
     /// the computed cost deltas.
-    fn feed_backwards(&self,
-                      network: &[Vec<f64>],
-                      expected: &[f64],
-                      errors: &mut [Vec<f64>],
-                      updates: &mut [dense::Update]) {
+    fn feed_backwards(
+        &self,
+        network: &[Vec<f64>],
+        expected: &[f64],
+        errors: &mut [Vec<f64>],
+        updates: &mut [dense::Update],
+    ) {
         for i in 0..expected.len() {
             errors.mut_back()[i] = expected[i] - network.back()[i];
         }
         for (i, layer) in (self.layers.iter().enumerate()).rev() {
             let (inputs, outputs) = io_layers(network, i);
             let (in_error, out_error) = mut_layers(errors, i);
-            layer.backward(inputs,
-                           outputs,
-                           &(),
-                           out_error,
-                           in_error,
-                           &mut updates[i]);
+            layer.backward(
+                inputs,
+                outputs,
+                &(),
+                out_error,
+                in_error,
+                &mut updates[i],
+            );
         }
     }
 
@@ -143,24 +149,27 @@ impl Trainable for Model {
         }
     }
 
-    fn compute_update(&self,
-                      example: &Self::Input,
-                      expected: &Self::Output,
-                      update: &mut Self::Update)
-                      -> f64 {
+    fn compute_update(
+        &self,
+        example: &Self::Input,
+        expected: &Self::Output,
+        update: &mut Self::Update,
+    ) -> f64 {
         update.activations.zero_out();
         update.errors.zero_out();
         self.feed_forward(&example, &mut update.activations);
-        self.feed_backwards(&update.activations,
-                            &expected,
-                            &mut update.errors,
-                            &mut update.updates);
+        self.feed_backwards(
+            &update.activations,
+            &expected,
+            &mut update.errors,
+            &mut update.updates,
+        );
         mean_square_error(update.activations.back(), &expected)
     }
 
     fn apply_update(&mut self, rate: f64, update: &mut Self::Update) {
-        for (layer, weight_update) in
-            zip(&mut self.layers, &mut update.updates) {
+        for (layer, weight_update) in zip(&mut self.layers, &mut update.updates)
+        {
             layer.apply_update(rate, weight_update);
         }
     }
@@ -197,9 +206,10 @@ fn io_layers(layers: &[Vec<f64>], layer: usize) -> (&[f64], &[f64]) {
     (&before[0], &after[0])
 }
 
-fn mut_layers(layers: &mut [Vec<f64>],
-              layer: usize)
-              -> (&mut [f64], &mut [f64]) {
+fn mut_layers(
+    layers: &mut [Vec<f64>],
+    layer: usize,
+) -> (&mut [f64], &mut [f64]) {
     let (before, after) = layers[layer..].split_at_mut(1);
     (&mut before[0], &mut after[0])
 }

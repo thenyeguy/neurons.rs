@@ -7,8 +7,8 @@ type Output = Vec<f64>;
 fn generate_data(num_samples: usize) -> Vec<(Input, Output)> {
     use rand::distributions::IndependentSample;
     let mut rng = rand::thread_rng();
-    let radians = rand::distributions::Range::new(0.0,
-                                                  2.0 * std::f64::consts::PI);
+    let radians =
+        rand::distributions::Range::new(0.0, 2.0 * std::f64::consts::PI);
     let noise = rand::distributions::Normal::new(0.0, 0.1);
 
     let mut data = Vec::new();
@@ -27,9 +27,11 @@ fn generate_data(num_samples: usize) -> Vec<(Input, Output)> {
     data
 }
 
-fn score(set_name: &str,
-         test_data: &[(Input, Output)],
-         runner: &mut neurons::feed_forward::Runner) {
+fn score(
+    set_name: &str,
+    test_data: &[(Input, Output)],
+    runner: &mut neurons::feed_forward::Runner,
+) {
     let mut num_correct = 0;
     for &(ref input, ref expected) in test_data {
         let output = runner.run(&input);
@@ -38,10 +40,12 @@ fn score(set_name: &str,
             num_correct += 1;
         }
     }
-    println!("{} set results: {} of {} correct",
-             set_name,
-             num_correct,
-             test_data.len());
+    println!(
+        "{} set results: {} of {} correct",
+        set_name,
+        num_correct,
+        test_data.len()
+    );
 }
 
 fn main() {
@@ -50,11 +54,13 @@ fn main() {
     use std::time::Duration;
 
     let training_data = generate_data(10_000);
-    let model = Trainer::new(feed_forward::Model::new(Activator::Sigmoid,
-                                                      &[2, 5, 5, 2]))
-        .stop_condition(Duration::from_secs(2))
-        .logging(Logging::Iterations(50))
-        .train(&training_data);
+    let model = Trainer::new(feed_forward::Model::new(
+        Activator::Sigmoid,
+        &[2, 5, 5, 2],
+    ))
+    .stop_condition(Duration::from_secs(2))
+    .logging(Logging::Iterations(50))
+    .train(&training_data);
     let mut runner = feed_forward::Runner::new(&model);
 
     println!();

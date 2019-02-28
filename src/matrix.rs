@@ -1,4 +1,4 @@
-use utils::ZeroOut;
+use crate::utils::ZeroOut;
 
 use itertools::zip;
 use rand;
@@ -24,7 +24,8 @@ impl Mat {
     }
 
     pub fn random<D>(distribution: D, rows: usize, cols: usize) -> Self
-        where D: IndependentSample<f64>
+    where
+        D: IndependentSample<f64>,
     {
         let mut rng = rand::thread_rng();
         let mut data = Vec::with_capacity(rows * cols);
